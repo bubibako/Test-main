@@ -20,7 +20,10 @@ struct ReviewCellConfig {
     let avatarImage: UIImage?
     /// Замыкание, вызываемое при нажатии на кнопку "Показать полностью...".
     let onTapShowMore: (UUID) -> Void
+    
+    let rating: Int
 
+    let usernameToRatingSpacing: CGFloat = 6.0
 
     /// Объект, хранящий посчитанные фреймы для ячейки отзыва.
     fileprivate let layout = ReviewCellLayout()
@@ -41,6 +44,9 @@ extension ReviewCellConfig: TableCellConfig {
         cell.createdLabel.attributedText = created
         cell.avatarImageView.image = avatarImage
         cell.config = self
+        
+        let ratingImage = RatingRenderer().ratingImage(rating)
+        cell.ratingImageView.image = ratingImage
     }
 
     /// Метод, возвращаюший высоту ячейки с данным ограничением по размеру.
@@ -49,6 +55,22 @@ extension ReviewCellConfig: TableCellConfig {
         layout.height(config: self, maxWidth: size.width)
     }
 
+}
+struct CountCellConfig: TableCellConfig {
+    static let reuseId = "CountCell"
+
+    let countText: String
+
+    func update(cell: UITableViewCell) {
+        cell.textLabel?.text = countText
+        cell.textLabel?.textAlignment = .center
+        cell.textLabel?.font = UIFont.boldSystemFont(ofSize: 16)
+        cell.selectionStyle = .none
+    }
+
+    func height(with size: CGSize) -> CGFloat {
+        return 44
+    }
 }
 
 // MARK: - Private
@@ -72,6 +94,7 @@ final class ReviewCell: UITableViewCell {
     fileprivate let reviewTextLabel = UILabel()
     fileprivate let createdLabel = UILabel()
     fileprivate let showMoreButton = UIButton()
+    fileprivate let ratingImageView = UIImageView()
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -90,6 +113,9 @@ final class ReviewCell: UITableViewCell {
         reviewTextLabel.frame = layout.reviewTextLabelFrame
         createdLabel.frame = layout.createdLabelFrame
         showMoreButton.frame = layout.showMoreButtonFrame
+        let ratingX = fullNameLabel.frame.origin.x
+        let ratingY = fullNameLabel.frame.maxY + 6
+        ratingImageView.frame = CGRect(x: ratingX, y: ratingY, width: 80, height: 16)
     }
 
 }
@@ -104,6 +130,17 @@ private extension ReviewCell {
         setupReviewTextLabel()
         setupCreatedLabel()
         setupShowMoreButton()
+        setupRatingImageView()
+        setupRatingImageView()
+        guard let config = config else { return }
+        let ratingRenderer = RatingRenderer()
+        let ratingImage = ratingRenderer.ratingImage(config.rating)
+        let ratingImageView = UIImageView(image: ratingImage)
+        contentView.addSubview(ratingImageView)
+        
+        let ratingX = fullNameLabel.frame.origin.x
+        let ratingY = fullNameLabel.frame.maxY + 6.0
+        ratingImageView.frame = CGRect(x: ratingX, y: ratingY, width: ratingImageView.image?.size.width ?? 0, height: ratingImageView.image?.size.height ?? 0)
     }
 
     func setupAvatarImageView() {
@@ -126,6 +163,11 @@ private extension ReviewCell {
 
     func setupCreatedLabel() {
         contentView.addSubview(createdLabel)
+    }
+    
+    func setupRatingImageView() {
+        contentView.addSubview(ratingImageView)
+        ratingImageView.contentMode = .scaleAspectFit
     }
 
     func setupShowMoreButton() {
@@ -153,6 +195,8 @@ private final class ReviewCellLayout {
     fileprivate static let avatarSize = CGSize(width: 36.0, height: 36.0)
     fileprivate static let avatarCornerRadius = 18.0
     fileprivate static let photoCornerRadius = 8.0
+    fileprivate let ratingHeight: CGFloat = 16.0
+    fileprivate let ratingSpacing: CGFloat = 6.0
     
     private static let photoSize = CGSize(width: 55.0, height: 66.0)
     private static let showMoreButtonSize = Config.showMoreText.size()
@@ -164,6 +208,14 @@ private final class ReviewCellLayout {
     private(set) var reviewTextLabelFrame = CGRect.zero
     private(set) var showMoreButtonFrame = CGRect.zero
     private(set) var createdLabelFrame = CGRect.zero
+    private(set) var ratingFrame = CGRect.zero
+    
+    func calculateRatingrame(maxWidth: CGFloat) {
+        let textX = fullNameFrame.origin.x
+        let ratingWidth: CGFloat = 80.0
+        
+        ratingFrame = CGRect(x: textX, y: fullNameFrame.maxY + ratingSpacing, width: ratingWidth, height: ratingHeight)
+    }
     
     // MARK: - Отступы
     
@@ -175,7 +227,7 @@ private final class ReviewCellLayout {
     /// Вертикальный отступ от имени пользователя до вью рейтинга.
     private let usernameToRatingSpacing = 6.0
     /// Вертикальный отступ от вью рейтинга до текста (если нет фото).
-    private let ratingToTextSpacing = 6.0
+    private let ratingToTextSpacing = 8.0
     /// Вертикальный отступ от вью рейтинга до фото.
     private let ratingToPhotosSpacing = 10.0
     /// Горизонтальные отступы между фото.
@@ -207,6 +259,12 @@ private final class ReviewCellLayout {
             width: textWidth, height: 20
             )
         
+        let ratingY = fullNameFrame.maxY + usernameToRatingSpacing
+        let ratingFrame = CGRect(
+            x: textX, y: ratingY,
+            width: textWidth, height: 20
+        )
+        
         let currentTextHeight = (config.reviewText.font()?.lineHeight ?? .zero) * CGFloat(config.maxLines)
         let actualTextHeight = config.reviewText.boundingRect(
             with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
@@ -222,7 +280,7 @@ private final class ReviewCellLayout {
         ).size
 
         reviewTextLabelFrame = CGRect(
-            origin: CGPoint(x: textX, y: fullNameFrame.maxY + 4),
+            origin: CGPoint(x: textX, y: ratingFrame.maxY + ratingToTextSpacing),
             size: reviewTextSize
         )
         

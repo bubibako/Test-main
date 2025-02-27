@@ -1,5 +1,36 @@
 import UIKit
 
+class CountCell: UITableViewCell {
+
+    private let countLabel = UILabel()
+
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
+        setupUI()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    private func setupUI() {
+        countLabel.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(countLabel)
+        NSLayoutConstraint.activate([
+            countLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            countLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor)
+        ])
+    }
+
+    func configure(countText: String) {
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.created,
+            .foregroundColor: UIColor.created
+            ]
+        let attributedString = NSAttributedString(string: countText, attributes: attributes)
+        countLabel.attributedText = attributedString
+    }
+}
 /// Класс, описывающий бизнес-логику экрана отзывов.
 final class ReviewsViewModel: NSObject {
 
@@ -51,7 +82,11 @@ private extension ReviewsViewModel {
             let reviews = try decoder.decode(Reviews.self, from: data)
             state.items += reviews.items.map(makeReviewItem)
             state.offset += state.limit
+            state.count = reviews.count
             state.shouldLoad = state.offset < reviews.count
+            if state.shouldLoad == false, !state.items.contains(where: { $0 is CountCellConfig }) {
+                state.items.append(CountCellConfig(countText: "Всего отзывов: \(reviews.count)"))
+            }
         } catch {
             state.shouldLoad = true        }
         onStateChange?(state)
@@ -89,11 +124,15 @@ private extension ReviewsViewModel {
         let fullName = "\(review.first_name ?? "") \(review.last_name ?? "")"
 
         let avatarImage = UIImage(named: "l5w5aIHioYc")
+        
+        let ratingRenderer = RatingRenderer()
+        let ratingImage = ratingRenderer.ratingImage(review.rating)
         return ReviewItem(
             reviewText: reviewText, fullName: fullName.attributed(font: .boldSystemFont(ofSize: 16)),
             created: created,
             avatarImage: avatarImage,
-            onTapShowMore: showMoreReview
+            onTapShowMore: showMoreReview,
+            rating: review.rating
         )
     }
 }
@@ -108,11 +147,26 @@ extension ReviewsViewModel: UITableViewDataSource {
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let config = state.items[indexPath.row]
-        let cell = tableView.dequeueReusableCell(withIdentifier: config.reuseId, for: indexPath)
-        config.update(cell: cell)
-        return cell
+        
+        // Проверка на CountCellConfig и создание ячейки с количеством отзывов
+        if let countCellConfig = config as? CountCellConfig {
+            if let cell = tableView.dequeueReusableCell(withIdentifier: "CountCellConfig", for: indexPath) as? CountCell {
+                cell.configure(countText: countCellConfig.countText)
+                return cell
+            }
+        }
+        
+        // Для других типов ячеек, например, ReviewCell
+        if let reviewCellConfig = config as? ReviewCellConfig {
+            if let cell = tableView.dequeueReusableCell(withIdentifier: ReviewCellConfig.reuseId, for: indexPath) as? ReviewCell {
+                reviewCellConfig.update(cell: cell)
+                return cell
+            }
+        }
+        
+        // Возвращаем пустую ячейку, если ничего не подошло
+        return UITableViewCell()
     }
-
 }
 
 // MARK: - UITableViewDelegate
