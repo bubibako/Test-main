@@ -55,6 +55,7 @@ extension ReviewCellConfig: TableCellConfig {
             imageView.contentMode = .scaleAspectFill
             imageView.clipsToBounds = true
             imageView.layer.cornerRadius = 8.0
+            imageView.translatesAutoresizingMaskIntoConstraints = false
             NSLayoutConstraint.activate([
                 imageView.widthAnchor.constraint(equalToConstant: 44),
                 imageView.heightAnchor.constraint(equalToConstant: 66)
