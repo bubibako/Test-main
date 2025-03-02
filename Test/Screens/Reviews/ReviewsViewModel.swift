@@ -115,7 +115,7 @@ private extension ReviewsViewModel {
     func makeReviewItem(_ review: Review) -> ReviewItem {
         let reviewText: NSAttributedString
         if review.text.isEmpty {
-            reviewText = NSAttributedString(string: "No review text", attributes: [.font: UIFont.text])
+            reviewText = NSAttributedString(string: " ", attributes: [.font: UIFont.text])
         } else {
             reviewText = review.text.attributed(font: .text)
         }
@@ -127,12 +127,15 @@ private extension ReviewsViewModel {
         
         let ratingRenderer = RatingRenderer()
         let ratingImage = ratingRenderer.ratingImage(review.rating)
+        
+        let randomPhotos = getRandomPhotos()
         return ReviewItem(
             reviewText: reviewText, fullName: fullName.attributed(font: .boldSystemFont(ofSize: 16)),
             created: created,
             avatarImage: avatarImage,
             onTapShowMore: showMoreReview,
-            rating: review.rating
+            rating: review.rating,
+            photos: randomPhotos
         )
     }
 }
@@ -172,11 +175,11 @@ extension ReviewsViewModel: UITableViewDataSource {
 // MARK: - UITableViewDelegate
 
 extension ReviewsViewModel: UITableViewDelegate {
-
+    
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         state.items[indexPath.row].height(with: tableView.bounds.size)
     }
-
+    
     /// Метод дозапрашивает отзывы, если до конца списка отзывов осталось два с половиной экрана по высоте.
     func scrollViewWillEndDragging(
         _ scrollView: UIScrollView,
@@ -187,7 +190,7 @@ extension ReviewsViewModel: UITableViewDelegate {
             getReviews()
         }
     }
-
+    
     private func shouldLoadNextPage(
         scrollView: UIScrollView,
         targetOffsetY: CGFloat,
@@ -198,6 +201,12 @@ extension ReviewsViewModel: UITableViewDelegate {
         let triggerDistance = viewHeight * screensToLoadNextPage
         let remainingDistance = contentHeight - viewHeight - targetOffsetY
         return remainingDistance <= triggerDistance
+    }
+    private func getRandomPhotos() -> [UIImage] {
+        let photoNames = ["IMG_0001", "IMG_0002", "IMG_0003", "IMG_0004", "IMG_0005", "IMG_0006"]
+        let randomCount = Int.random(in: 0...5)
+        let shuffledNames = photoNames.shuffled().prefix(randomCount)
+        return shuffledNames.compactMap { UIImage(named: $0) }
     }
 
 }

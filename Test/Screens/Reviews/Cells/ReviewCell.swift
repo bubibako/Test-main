@@ -22,6 +22,8 @@ struct ReviewCellConfig {
     let onTapShowMore: (UUID) -> Void
     
     let rating: Int
+    
+    let photos: [UIImage]?
 
     let usernameToRatingSpacing: CGFloat = 6.0
 
@@ -47,6 +49,18 @@ extension ReviewCellConfig: TableCellConfig {
         
         let ratingImage = RatingRenderer().ratingImage(rating)
         cell.ratingImageView.image = ratingImage
+        cell.photoStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        photos?.forEach { photo in
+            let imageView = UIImageView(image: photo)
+            imageView.contentMode = .scaleAspectFill
+            imageView.clipsToBounds = true
+            imageView.layer.cornerRadius = 8.0
+            NSLayoutConstraint.activate([
+                imageView.widthAnchor.constraint(equalToConstant: 44),
+                imageView.heightAnchor.constraint(equalToConstant: 66)
+            ])
+            cell.photoStackView.addArrangedSubview(imageView)
+        }
     }
 
     /// Метод, возвращаюший высоту ячейки с данным ограничением по размеру.
@@ -95,6 +109,7 @@ final class ReviewCell: UITableViewCell {
     fileprivate let createdLabel = UILabel()
     fileprivate let showMoreButton = UIButton()
     fileprivate let ratingImageView = UIImageView()
+    fileprivate let photoStackView = UIStackView()
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -116,6 +131,7 @@ final class ReviewCell: UITableViewCell {
         let ratingX = fullNameLabel.frame.origin.x
         let ratingY = fullNameLabel.frame.maxY + 6
         ratingImageView.frame = CGRect(x: ratingX, y: ratingY, width: 80, height: 16)
+        photoStackView.frame = layout.photosFrame
     }
 
 }
@@ -132,6 +148,7 @@ private extension ReviewCell {
         setupShowMoreButton()
         setupRatingImageView()
         setupRatingImageView()
+        setupPhotosStackView()
         guard let config = config else { return }
         let ratingRenderer = RatingRenderer()
         let ratingImage = ratingRenderer.ratingImage(config.rating)
@@ -164,6 +181,14 @@ private extension ReviewCell {
         contentView.addSubview(createdLabel)
     }
     
+    func setupPhotosStackView() {
+        contentView.addSubview(photoStackView)
+        photoStackView.axis = .horizontal
+        photoStackView.spacing = 8.0
+        photoStackView.distribution = .fill
+        photoStackView.alignment = .leading
+    }
+    
     func setupRatingImageView() {
         contentView.addSubview(ratingImageView)
         ratingImageView.contentMode = .scaleAspectFit
@@ -194,10 +219,11 @@ private final class ReviewCellLayout {
     fileprivate static let avatarSize = CGSize(width: 36.0, height: 36.0)
     fileprivate static let avatarCornerRadius = 18.0
     fileprivate static let photoCornerRadius = 8.0
+    fileprivate static let photoSize = CGSize(width: 55.0, height: 66.0)
     fileprivate let ratingHeight: CGFloat = 16.0
     fileprivate let ratingSpacing: CGFloat = 6.0
     
-    private static let photoSize = CGSize(width: 55.0, height: 66.0)
+
     private static let showMoreButtonSize = Config.showMoreText.size()
     
     // MARK: - Фреймы
@@ -208,6 +234,7 @@ private final class ReviewCellLayout {
     private(set) var showMoreButtonFrame = CGRect.zero
     private(set) var createdLabelFrame = CGRect.zero
     private(set) var ratingFrame = CGRect.zero
+    private(set) var photosFrame = CGRect.zero
     
     func calculateRatingrame(maxWidth: CGFloat) {
         let textX = fullNameFrame.origin.x
@@ -249,63 +276,63 @@ private final class ReviewCellLayout {
         let avatarY = insets.top
         
         avatarFrame = CGRect(origin: CGPoint(x: avatarX, y: avatarY), size: Self.avatarSize)
-        
-        let textX = avatarFrame.maxX + avatarToTextSpacing
-        let textWidth = width - Self.avatarSize.width - avatarToTextSpacing
-        
-        fullNameFrame = CGRect(
-            x: textX, y: avatarY,
-            width: textWidth, height: 20
-            )
-        
-        let ratingY = fullNameFrame.maxY + usernameToRatingSpacing
-        let ratingFrame = CGRect(
-            x: textX, y: ratingY,
-            width: textWidth, height: 20
-        )
-        
-        let currentTextHeight = (config.reviewText.font()?.lineHeight ?? .zero) * CGFloat(config.maxLines)
-        let actualTextHeight = config.reviewText.boundingRect(
-            with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
-            options: .usesLineFragmentOrigin,
-            context: nil
-        ).size.height
-        let showShowMoreButton = config.maxLines != .zero && actualTextHeight > currentTextHeight
-        
-        let reviewTextSize = config.reviewText.boundingRect(
-            with: CGSize(width: textWidth, height: currentTextHeight),
-            options: .usesLineFragmentOrigin,
-            context: nil
-        ).size
 
-        reviewTextLabelFrame = CGRect(
-            origin: CGPoint(x: textX, y: ratingFrame.maxY + ratingToTextSpacing),
-            size: reviewTextSize
-        )
-        
-        var maxY = reviewTextLabelFrame.maxY + reviewTextToCreatedSpacing
-        if showShowMoreButton {
-            showMoreButtonFrame = CGRect(
-                origin: CGPoint(x: textX, y: maxY),
-                size: Self.showMoreButtonSize
-            )
-            maxY = showMoreButtonFrame.maxY + reviewTextToCreatedSpacing // Увеличиваем отступ
-        } else {
-            showMoreButtonFrame = .zero
+                let textX = avatarFrame.maxX + avatarToTextSpacing
+                let textWidth = width - Self.avatarSize.width - avatarToTextSpacing
+
+                fullNameFrame = CGRect(
+                    x: textX, y: avatarY,
+                    width: textWidth, height: 20
+                )
+
+                let ratingY = fullNameFrame.maxY + usernameToRatingSpacing
+                ratingFrame = CGRect(
+                    x: textX, y: ratingY,
+                    width: textWidth, height: ratingHeight
+                )
+
+                // Рассчитываем фрейм для фотографий
+                let photosY = ratingFrame.maxY + ratingToPhotosSpacing
+                photosFrame = CGRect(
+                    x: textX, y: photosY,
+                    width: textWidth, height: config.photos?.isEmpty == false ? Self.photoSize.height : 0
+                )
+
+                let reviewTextY = photosFrame.maxY + photosToTextSpacing
+                let reviewTextSize = config.reviewText.boundingRect(
+                    with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
+                    options: .usesLineFragmentOrigin,
+                    context: nil
+                ).size
+
+                reviewTextLabelFrame = CGRect(
+                    origin: CGPoint(x: textX, y: reviewTextY),
+                    size: reviewTextSize
+                )
+
+                var maxY = reviewTextLabelFrame.maxY + reviewTextToCreatedSpacing
+                if config.maxLines != .zero && reviewTextSize.height > (config.reviewText.font()?.lineHeight ?? .zero) * CGFloat(config.maxLines) {
+                    showMoreButtonFrame = CGRect(
+                        origin: CGPoint(x: textX, y: maxY),
+                        size: Self.showMoreButtonSize
+                    )
+                    maxY = showMoreButtonFrame.maxY + showMoreToCreatedSpacing
+                } else {
+                    showMoreButtonFrame = .zero
+                }
+
+                createdLabelFrame = CGRect(
+                    origin: CGPoint(x: textX, y: maxY),
+                    size: config.created.boundingRect(
+                        with: CGSize(width: textWidth, height: 20),
+                        options: .usesLineFragmentOrigin,
+                        context: nil
+                    ).size
+                )
+
+                return max(avatarFrame.maxY, createdLabelFrame.maxY) + insets.bottom
+            }
         }
-
-        createdLabelFrame = CGRect(
-            origin: CGPoint(x: textX, y: maxY + 6), // Здесь используем maxY для правильного размещения
-            size: config.created.boundingRect(
-                with: CGSize(width: textWidth, height: 20),
-                options: .usesLineFragmentOrigin,
-                context: nil
-            ).size
-        )
-        
-        return max(avatarFrame.maxY, createdLabelFrame.maxY) + insets.bottom
-    }
-}
 
 // MARK: - Typealias
 
