@@ -154,7 +154,6 @@ private extension ReviewCell {
     func setupFullNameLabel() {
         contentView.addSubview(fullNameLabel)
         fullNameLabel.font = UIFont.boldSystemFont(ofSize: 16)
-        fullNameLabel.textColor = .black
     }
     func setupReviewTextLabel() {
         contentView.addSubview(reviewTextLabel)
